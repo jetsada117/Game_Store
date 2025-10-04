@@ -4,4 +4,4 @@ router = APIRouter()
 
 @router.get("/")
 def index():
-    return {"message": "Hello FastAPI 🚀"}
+    return "Hello Game Store"
