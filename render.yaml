@@ -7,6 +7,6 @@ services:
     startCommand: bash start.sh         # รันสคริปต์ที่ migrate แล้วค่อยสตาร์ท
     autoDeploy: true
     envVars:
-      - key: DATABASE_URL               # ใส่ค่าใน Dashboard ภายหลัง (หรือผูก secret)
-        sync: false
+      - key: PYTHONPATH
+        value: /opt/render/project/src
     healthCheckPath: /
