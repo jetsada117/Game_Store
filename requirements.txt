@@ -5,3 +5,4 @@ pymysql
 alembic
 python-dotenv
 pydantic[email]
+pydantic-settings
