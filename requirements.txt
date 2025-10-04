@@ -1,7 +1,7 @@
 fastapi
-uvicorn[standard]
-pydantic>=2
+"uvicorn[standard]"
 sqlalchemy
 pymysql
 alembic
 python-dotenv
+pydantic[email]

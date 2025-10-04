@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: game-store-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash start.sh         # รันสคริปต์ที่ migrate แล้วค่อยสตาร์ท
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL               # ใส่ค่าใน Dashboard ภายหลัง (หรือผูก secret)
+        sync: false
+    healthCheckPath: /
