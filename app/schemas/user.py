@@ -12,7 +12,7 @@ class UserBase(BaseModel):
 # Schema สำหรับการสร้างผู้ใช้
 # -----------------------------
 class UserCreate(UserBase):
-    password_hash: str
+    password: str
     img_url: str
 
 

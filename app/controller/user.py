@@ -15,7 +15,7 @@ def read_users(db: Session = Depends(get_db)):
 async def create_user_with_image(
     username: str = Form(...),
     email: str = Form(...),
-    password_hash: str = Form(...),              
+    password: str = Form(...),              
     image: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
@@ -25,7 +25,7 @@ async def create_user_with_image(
     user_in = UserCreate(
         username=username,
         email=email,
-        password_hash=password_hash,
+        password=password,
         img_url=""
     )
 
