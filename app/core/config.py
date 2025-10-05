@@ -2,8 +2,15 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+    # ---------------------------
+    # Application Config
+    # ---------------------------
     APP_NAME: str = "Game Store API"
     DEBUG: bool = True
+
+    # ---------------------------
+    # MySQL Database
+    # ---------------------------
     MYSQL_USER: str = "root"
     MYSQL_PASSWORD: str = "password"
     MYSQL_HOST: str = "localhost"
@@ -17,6 +24,19 @@ class Settings(BaseSettings):
             f"{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DB}"
         )
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+    # ---------------------------
+    # Supabase Config
+    # ---------------------------
+    SUPABASE_URL: str | None = None
+    SUPABASE_ANON_KEY: str | None = None
 
+    # ---------------------------
+    # Pydantic Config
+    # ---------------------------
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True
+    )
+
+# สร้าง instance เดียวใช้ทั่วระบบ
 settings = Settings()

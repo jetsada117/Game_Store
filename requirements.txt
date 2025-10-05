@@ -6,3 +6,6 @@ alembic
 python-dotenv
 pydantic[email]
 pydantic-settings
+supabase>=2.5
+psycopg[binary]>=3.2    
+python-multipart      

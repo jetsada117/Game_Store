@@ -5,26 +5,44 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-def create_user(db: Session, user):
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from datetime import datetime
+from app.services.upload_service import upload_avatar
+
+def create_user_with_file(db: Session, user, image_file) -> dict | None:
+    # 1) อัปโหลดรูปขึ้น Supabase
+    file_bytes = image_file.file.read()
+    img_url = upload_avatar(
+        file_bytes=file_bytes,
+        filename=image_file.filename,
+        content_type=image_file.content_type or "application/octet-stream"
+    )
+
+    # 2) บันทึกลง MySQL (เก็บ URL ที่ได้)
     sql = text("""
         INSERT INTO users (username, email, password_hash, img_url, role, wallet_balance, created_at, updated_at)
         VALUES (:username, :email, :password_hash, :img_url, :role, :wallet_balance, :created_at, :updated_at);
     """)
-    db.execute(sql, {
+    params = {
         "username": user.username,
         "email": user.email,
-        "password_hash": user.password_hash,
-        "img_url": user.img_url,
+        "password_hash": user.password_hash,  # หรือ hash ก่อนถ้า user.password
+        "img_url": img_url,
         "role": "USER",
         "wallet_balance": 0.00,
         "created_at": datetime.now(),
         "updated_at": datetime.now()
-    })
+    }
+    db.execute(sql, params)
     db.commit()
 
-    result = db.execute(text("SELECT * FROM users WHERE email = :email"), {"email": user.email})
-    db_user = result.fetchone()
-    return db_user
+    row = db.execute(
+        text("SELECT * FROM users WHERE email = :email"),
+        {"email": user.email}
+    ).mappings().first()
+    return dict(row) if row else None
+
 
 
 def get_users(db: Session):
