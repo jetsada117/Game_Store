@@ -1,14 +1,31 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
+# -----------------------------
+# Base schema (ใช้ร่วม)
+# -----------------------------
 class UserBase(BaseModel):
     username: str
-    email: str
+    email: str 
 
+
+# -----------------------------
+# Schema สำหรับการสร้างผู้ใช้
+# -----------------------------
 class UserCreate(UserBase):
-    pass
+    password_hash: str
+    img_url: str
 
+
+# -----------------------------
+# Schema สำหรับการตอบกลับ
+# -----------------------------
 class UserResponse(UserBase):
     id: int
+    img_url: str
+    role: str
+    wallet_balance: float
 
     class Config:
-        model_config = {"from_attributes": True}
+        from_attributes = True
+
+
