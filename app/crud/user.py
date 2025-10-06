@@ -47,7 +47,7 @@ def create_user_with_file(db: Session, user, image_file) -> dict | None:
     db.commit()
 
     row = db.execute(
-        text("SELECT * FROM users WHERE email = :email"),
+        text("SELECT id, username, email, img_url, role FROM users WHERE email = :email"),
         {"email": user.email}
     ).mappings().first()
     return dict(row) if row else None
