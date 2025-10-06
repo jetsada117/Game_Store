@@ -1,4 +1,5 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
+from typing import Optional
 
 # -----------------------------
 # Base schema (ใช้ร่วม)
@@ -27,5 +28,13 @@ class UserResponse(UserBase):
 
     class Config:
         from_attributes = True
+
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+    role: Optional[str] = None
+    wallet_balance: Optional[float] = None
 
 
