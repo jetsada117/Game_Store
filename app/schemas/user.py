@@ -24,7 +24,6 @@ class UserResponse(UserBase):
     id: int
     img_url: str
     role: str
-    wallet_balance: float
 
     class Config:
         from_attributes = True
