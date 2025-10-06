@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import PasswordChange, UserCreate, UserResponse, UserUpdate
 from app.crud import user as crud_user
 from app.db.dependency import get_db
 from typing import List
@@ -68,3 +68,15 @@ def update_user_info(
                 content={"message": "อีเมลนี้ถูกใช้แล้ว"}
             )
         raise
+
+@router.put("/{user_id}/password")
+def change_password(
+    user_id: int = Path(..., gt=0),
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    result = crud_user.update_password(db, user_id, current_password, new_password)
+    if not result:
+        raise HTTPException(status_code=400, detail="Password update failed")
+    return {"message": "Password updated successfully"}

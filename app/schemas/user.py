@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 # -----------------------------
@@ -37,3 +37,6 @@ class UserUpdate(BaseModel):
     wallet_balance: Optional[float] = None
 
 
+class PasswordChange(BaseModel):
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=1)
