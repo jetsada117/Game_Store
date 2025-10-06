@@ -12,13 +12,10 @@ app = FastAPI(title="My API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:4200",         
-        "https://game-store-7bbq.onrender.com"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],       # <-- ให้ทุกโดเมนเข้าถึงได้
+    allow_credentials=True,    # ถ้าไม่จำเป็นใช้ cookie, สามารถเปลี่ยนเป็น False
+    allow_methods=["*"],       # อนุญาตทุก method เช่น GET, POST, PUT, DELETE
+    allow_headers=["*"],       # อนุญาตทุก header เช่น Authorization, Content-Type
 )
 
 app.include_router(index_router)
