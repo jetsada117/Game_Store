@@ -12,7 +12,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 def read_users(db: Session = Depends(get_db)):
     return crud_user.get_users(db)
 
-@router.post("/", response_model=UserResponse)
+@router.post("/", response_model=UserResponse, status_code=201)
 async def create_user_with_image(
     username: str = Form(...),
     email: str = Form(...),
