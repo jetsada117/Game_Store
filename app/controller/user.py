@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
-from grpc import Status
 from sqlalchemy.orm import Session
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.crud import user as crud_user
@@ -65,7 +64,7 @@ def update_user_info(
     except HTTPException as e:
         if e.status_code == 409:
             return JSONResponse(
-                status_code=Status.HTTP_409_CONFLICT,
+                status_code=status.HTTP_409_CONFLICT,
                 content={"message": "อีเมลนี้ถูกใช้แล้ว"}
             )
         raise
