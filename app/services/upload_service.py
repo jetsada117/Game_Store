@@ -4,9 +4,6 @@ from app.core.supabase_client import supabase
 BUCKET = "image_user" 
 
 def upload_avatar(file_bytes: bytes, filename: str, content_type: str) -> str:
-    """
-    อัปโหลดไฟล์ขึ้น Supabase แล้วคืน public URL
-    """
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
     key = f"avatars/{uuid.uuid4()}.{ext}"
 
