@@ -79,8 +79,8 @@ def _update_user_simple(db: Session, user_id: int, data: dict) -> dict | None:
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="อีเมลนี้ถูกใช้แล้ว")
-    row = db.execute(text("SELECT * FROM users WHERE id = :id"), {"id": user_id}).mappings().first()
-    return dict(row) if row else None
+    row = db.execute(text("SELECT id, username, email, img_url, role, wallet_balance FROM users WHERE id = :id"), {"id": user_id}).mappings().first()
+    return row
 
 
 def update_profile(db: Session, user_id: int, payload) -> dict | None:
