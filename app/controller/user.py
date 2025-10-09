@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, UploadFile, status
+from fastapi import APIRouter, HTTPException, UploadFile, status, Depends, File, Form, Path
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from app.schemas.user import PasswordChange, UserCreate, UserResponse, UserUpdate
+from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.crud import user as crud_user
 from app.db.dependency import get_db
 from typing import List
