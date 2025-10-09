@@ -60,7 +60,7 @@ def get_users(db: Session):
 
 def get_user_by_email(db: Session, email: str):
     row = db.execute(
-        text("SELECT id, username, email, img_url, role, wallet_balance FROM users WHERE email = :email"),
+        text("SELECT id, username, password_hash, email, img_url, role, wallet_balance FROM users WHERE email = :email"),
         {"email": email}
     ).mappings().first()
     return row
