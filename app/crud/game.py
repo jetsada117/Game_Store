@@ -73,7 +73,7 @@ def create_game_category(db: Session, name: str) -> dict | None:
     return row
 
 
-def game_category(db: Session):
+def get_game_category(db: Session):
     try:
         result = db.execute(text("SELECT * FROM game_category ORDER by id")).mappings().all() 
 
