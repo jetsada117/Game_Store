@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
@@ -7,7 +7,7 @@ class GameBase(BaseModel):
     type_id: int
     description: Optional[str] = None
     price: float
-    release_date: Optional[datetime.date] = None
+    release_date: Optional[datetime] = None
     image_url: Optional[str] = None
 
 class GameCreate(GameBase):
@@ -19,3 +19,7 @@ class GameResponse(GameBase):
 
     class Config:
         from_attributes = True
+
+class GameCategory(BaseModel):
+    id: int
+    name: str

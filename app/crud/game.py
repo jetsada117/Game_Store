@@ -46,9 +46,9 @@ def create_game_with_file(db: Session, game, image_file) -> dict | None:
     return row
 
 
-def create_game_type(db: Session, name: str) -> dict | None:
+def create_game_category(db: Session, name: str) -> dict | None:
     existing = db.execute(
-        text("SELECT id FROM game_types WHERE name = :name"),
+        text("SELECT id FROM game_category WHERE name = :name"),
         {"name": name}
     ).first()
 
@@ -58,7 +58,7 @@ def create_game_type(db: Session, name: str) -> dict | None:
 
 
     sql = text("""
-        INSERT INTO game_types (name)
+        INSERT INTO game_category (name)
         VALUES (:name);
     """)
     db.execute(sql, {"name": name})
@@ -66,8 +66,21 @@ def create_game_type(db: Session, name: str) -> dict | None:
 
 
     row = db.execute(
-        text("SELECT id, name FROM game_types WHERE name = :name"),
+        text("SELECT id, name FROM game_category WHERE name = :name"),
         {"name": name}
     ).mappings().first()
 
     return row
+
+
+def game_category(db: Session):
+    try:
+        result = db.execute(text("SELECT * FROM game_category ORDER by id")).mappings().all() 
+
+        if not result:
+            raise HTTPException(status_code=404, detail="No game categories found")
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
