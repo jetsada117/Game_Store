@@ -1,27 +1,17 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 
-# -----------------------------
-# Base schema (ใช้ร่วม)
-# -----------------------------
-class UserBase(BaseModel):
+class UserCreate(BaseModel):
     username: str
     email: str 
-
-
-# -----------------------------
-# Schema สำหรับการสร้างผู้ใช้
-# -----------------------------
-class UserCreate(UserBase):
     password: str
     img_url: str
 
 
-# -----------------------------
-# Schema สำหรับการตอบกลับ
-# -----------------------------
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     id: int
+    username: str
+    email: str 
     img_url: str
     role: str
 

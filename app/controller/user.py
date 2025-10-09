@@ -33,7 +33,7 @@ async def create_user_with_image(
     created = crud_user.create_user_with_file(db, user_in, image) 
     if not created:
         raise HTTPException(status_code=400, detail="Create user failed")
-    return created
+    return {"message": "Create updated successfully"}
 
 
 @router.put("/{user_id}")
@@ -59,7 +59,7 @@ def update_user_info(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        return {"message": "User updated successfully", "user": user}
+        return user
 
     except HTTPException as e:
         if e.status_code == 409:

@@ -10,14 +10,4 @@ def login_plain(db: Session, email: str, password: str) -> dict:
     if not verify_password(password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    return {
-        "message": "login ok",
-        "user": {
-            "id": user["id"],
-            "username": user["username"],
-            "email": user["email"],
-            "img_url": user["img_url"],
-            "role": user["role"],
-            "wallet_balance": float(user["wallet_balance"]),
-        }
-    }
+    return user
