@@ -1,6 +1,9 @@
 from sqlalchemy import Column, Integer, String
 from app.db.database import Base
 
+
+# ไม่จำเป็นสำหรับ raw sql 
+# ใช้สำหรับ ORM
 class User(Base):
     __tablename__ = "users"
 

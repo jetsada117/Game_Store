@@ -1,8 +1,6 @@
 import uuid
 from app.core.supabase_client import supabase
 
-
-
 def upload_avatar(file_bytes: bytes, filename: str, content_type: str) -> str:
     BUCKET = "image_user" 
 
@@ -17,7 +15,6 @@ def upload_avatar(file_bytes: bytes, filename: str, content_type: str) -> str:
     )
     url = sb.storage.from_(BUCKET).get_public_url(key)
     return url
-
 
 def upload_game_image(file_bytes: bytes, filename: str, content_type: str) -> str:
     BUCKET = "image_user" 
