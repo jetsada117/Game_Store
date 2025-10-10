@@ -5,10 +5,9 @@ from pydantic import BaseModel
 class GameBase(BaseModel):
     name: str
     type_id: int
-    description: Optional[str] = None
+    description: str
     price: float
-    release_date: Optional[datetime] = None
-    image_url: Optional[str] = None
+    image_url: str
 
 class GameCreate(GameBase):
     pass

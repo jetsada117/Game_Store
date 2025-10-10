@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.services.upload_service import upload_game_image
+from app.utils.function import thai_date
 
 def create_game_with_file(db: Session, game, image_file) -> dict | None:
     existing = db.execute(
@@ -30,7 +31,7 @@ def create_game_with_file(db: Session, game, image_file) -> dict | None:
         "type_id": game.type_id,
         "description": game.description,
         "price": game.price,
-        "release_date": game.release_date,
+        "release_date": thai_date(),
         "image_url": img_url,
         "created_at": datetime.now()
     }
