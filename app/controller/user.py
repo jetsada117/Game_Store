@@ -46,8 +46,7 @@ def update_user_info(
 ):
     payload = UserUpdate(
         username=username,
-        email=email,
-        
+        email=email
     )
 
     try:
