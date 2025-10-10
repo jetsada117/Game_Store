@@ -13,7 +13,7 @@ def get_game_category(db: Session = Depends(get_db)):
     categories = crud_game.get_game_category(db)
     return categories
 
-@router.post("/category")
+@router.post("/category", status_code=201)
 def add_game_category(name: str = Form(...), db: Session = Depends(get_db)):
     new_type = crud_game.create_game_category(db, name)
     return {"message": "เพิ่มประเภทเกมสำเร็จ", "data": new_type}
