@@ -1,6 +1,4 @@
-
 from datetime import datetime
-
 
 def thai_date() -> str:
     now = datetime.now()
