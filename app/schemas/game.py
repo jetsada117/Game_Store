@@ -16,11 +16,16 @@ class GameUpdate(BaseModel):
     name: Optional[str] = None
     type_id: Optional[int] = None
     description: Optional[str] = None
-    price: Optional[str] = None
+    price: Optional[float] = None
 
-class GameResponse(GameBase):
+class GameResponse(BaseModel):
     id: int
-    created_at: datetime
+    name: str
+    category_name: str
+    description: Optional[str]
+    price: float
+    release_date: Optional[str]
+    image_url: Optional[str]
 
     class Config:
         from_attributes = True

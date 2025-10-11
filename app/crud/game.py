@@ -1,9 +1,54 @@
 from sqlalchemy import text
 from datetime import datetime
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from app.services.upload_service import upload_game_image
 from app.utils.function import thai_date
+
+def get_game_all(db: Session) -> dict | None:
+    sql = text("""
+        SELECT 
+            g.id, g.name, c.name AS category_name,
+            g.description, g.price, g.release_date, g.image_url
+        FROM games AS g
+        JOIN game_category AS c ON g.type_id = c.id
+        ORDER BY g.id
+    """)
+
+    rows = db.execute(sql).mappings().all()
+    return rows
+
+def get_game(db: Session, game_id: int) -> dict | None:
+    result = db.execute(
+        text("""
+            SELECT
+                g.id,
+                g.name,
+                c.name AS category_name,
+                g.description,
+                g.price,
+                g.release_date,
+                g.image_url
+            FROM games AS g
+            JOIN game_category AS c ON g.type_id = c.id
+            WHERE g.id = :id
+        """),
+        {"id": game_id}
+    ).mappings().first()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลเกมนี้")
+
+    return result
+
+
+def unique_name(db: Session, name: str, game_id: int) -> None:
+    dup = db.execute(
+        text("SELECT id FROM games WHERE name = :name AND id <> :id"),
+        {"name": name, "id": game_id}
+    ).first()
+    if dup:
+        raise HTTPException(status_code=409, detail="ชื่อเกมนี้ถูกใช้แล้ว")
 
 def create_game_with_file(db: Session, game, image_file) -> dict | None:
     existing = db.execute(
@@ -85,3 +130,76 @@ def get_game_category(db: Session):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+
+def update_game_without_file(db: Session, game_id: int, game) -> dict:
+    existing = get_game(db, game_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลเกมนี้")
+
+    unique_name(db, game.name, game_id)
+
+    sql = text("""
+        UPDATE games
+        SET name = :name,
+            type_id = :type_id,
+            description = :description,
+            price = :price
+        WHERE id = :id
+    """)
+
+    params = {
+        "id": game_id,
+        "name": game.name,
+        "type_id": game.type_id,
+        "description": game.description,
+        "price": game.price,
+    }
+
+    db.execute(sql, params)
+    db.commit()
+
+    result = get_game(db, game_id)
+    return result
+
+def update_game_with_file(db: Session, game_id: int, game, image_file: UploadFile) -> dict:
+    existing = get_game(db, game_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลเกมนี้")
+
+    unique_name(db, game.name, game_id)
+
+    if image_file.content_type not in {"image/png", "image/jpeg"}:
+        raise HTTPException(status_code=400, detail="อนุญาตเฉพาะภาพ PNG/JPEG")
+
+    file_bytes = image_file.file.read()
+    img_url = upload_game_image(
+        file_bytes=file_bytes,
+        filename=image_file.filename,
+        content_type=image_file.content_type or "application/octet-stream",
+    )
+
+    sql = text("""
+        UPDATE games
+        SET name = :name,
+            type_id = :type_id,
+            description = :description,
+            price = :price,
+            image_url = :image_url
+        WHERE id = :id
+    """)
+
+    params = {
+        "id": game_id,
+        "name": game.name,
+        "type_id": game.type_id,
+        "description": game.description,
+        "price": game.price,
+        "image_url": img_url,
+    }
+
+    db.execute(sql, params)
+    db.commit()
+
+    result = get_game(db, game_id)
+    return result
