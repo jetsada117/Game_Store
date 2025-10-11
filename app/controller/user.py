@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, UploadFile, status, Depends, File, Form, Path
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import MoneyUpdate, UserCreate, UserResponse, UserUpdate
 from app.crud import user as crud_user
 from app.db.dependency import get_db
 from typing import List
@@ -79,3 +79,12 @@ def change_password(
     if not result:
         raise HTTPException(status_code=400, detail="Password update failed")
     return {"message": "Password updated successfully"}
+
+@router.post("/wallet/{user_id}", response_model=MoneyUpdate)
+def add_balance(
+    user_id: int = Path(..., gt=0),
+    amount: float = Form(...),
+    db: Session = Depends(get_db)
+):
+    result = crud_user.add_balance(db, user_id, amount)
+    return result

@@ -27,3 +27,11 @@ class UserUpdate(BaseModel):
 class PasswordChange(BaseModel):
     current_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=1)
+
+
+class MoneyUpdate(BaseModel):
+    id: int
+    wallet_balance: float
+
+    class Config:
+        from_attributes = True

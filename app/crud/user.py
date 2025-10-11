@@ -15,7 +15,6 @@ def _email_exists(db: Session, email: str, exclude_user_id: int | None = None) -
         sql = text("SELECT 1 FROM users WHERE email = :email AND id <> :id LIMIT 1")
         return db.execute(sql, {"email": email, "id": exclude_user_id}).scalar() is not None
 
-
 def create_user_with_file(db: Session, user, image_file) -> dict | None:
     if _email_exists(db, user.email):
         raise HTTPException(status_code=409, detail="อีเมลนี้ถูกใช้แล้ว")
@@ -52,11 +51,9 @@ def create_user_with_file(db: Session, user, image_file) -> dict | None:
     ).mappings().first()
     return row
 
-
 def get_users(db: Session):
     result = db.execute(text("SELECT * FROM users"))
     return result.fetchall()
-
 
 def get_user_by_email(db: Session, email: str):
     row = db.execute(
@@ -64,7 +61,6 @@ def get_user_by_email(db: Session, email: str):
         {"email": email}
     ).mappings().first()
     return row
-
 
 def _update_user_simple(db: Session, user_id: int, data: dict) -> dict | None:
     if not data:
@@ -82,7 +78,6 @@ def _update_user_simple(db: Session, user_id: int, data: dict) -> dict | None:
     row = db.execute(text("SELECT id, username, email, img_url, role, wallet_balance FROM users WHERE id = :id"), {"id": user_id}).mappings().first()
     return row
 
-
 def update_profile(db: Session, user_id: int, payload) -> dict | None:
     data_in = payload.dict(exclude_unset=True) if hasattr(payload, "dict") else dict(payload or {})
     updated: dict = {}
@@ -96,7 +91,6 @@ def update_profile(db: Session, user_id: int, payload) -> dict | None:
         updated["email"] = data_in["email"]
 
     return _update_user_simple(db, user_id, updated)
-
 
 def update_profile_with_file(db: Session, user_id: int, payload, image_file) -> dict | None:
     data_in = payload.dict(exclude_unset=True) if hasattr(payload, "dict") else dict(payload or {})
@@ -121,7 +115,6 @@ def update_profile_with_file(db: Session, user_id: int, payload, image_file) -> 
 
     return _update_user_simple(db, user_id, updated)
 
-
 def update_password(db: Session, user_id: int, current_password: str, new_password: str) -> dict | None:
     row = db.execute(text("SELECT id, password_hash FROM users WHERE id = :id"),
                      {"id": user_id}).mappings().first()
@@ -133,3 +126,48 @@ def update_password(db: Session, user_id: int, current_password: str, new_passwo
 
     new_hash = hash_password(new_password)
     return _update_user_simple(db, user_id, {"password_hash": new_hash})
+
+def add_balance(db: Session, user_id: int, amount: float):
+    user = db.execute(
+        text("SELECT id, wallet_balance FROM users WHERE id = :id"),
+        {"id": user_id}
+    ).mappings().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="ไม่พบบัญชีผู้ใช้")
+
+    if amount is None or float(amount) <= 0:
+        raise HTTPException(status_code=400, detail="amount must be positive")
+
+    new_balance = float(user["wallet_balance"] or 0) + float(amount)
+
+    db.execute(
+        text("""
+            UPDATE users
+            SET wallet_balance = :balance
+            WHERE id = :id
+        """),
+        {"id": user_id, "balance": new_balance}
+    )
+
+    db.execute(
+        text("""
+            INSERT INTO transactions (user_id, type, amount, status, processed_at)
+            VALUES (:user_id, :type, :amount, :status, :processed_at)
+        """),
+        {
+            "user_id": user_id,
+            "type": "topup",
+            "amount": float(amount),
+            "status": "success",
+            "processed_at": datetime.now(),
+        }
+    )
+
+    db.commit()
+
+    row = db.execute(
+        text("SELECT id, wallet_balance FROM users WHERE id = :id"),
+        {"id": user_id}
+    ).mappings().first()
+
+    return row
