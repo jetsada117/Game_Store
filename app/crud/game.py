@@ -18,6 +18,22 @@ def get_game_all(db: Session) -> dict | None:
     rows = db.execute(sql).mappings().all()
     return rows
 
+
+def get_game_by_name(db: Session, keyword: str) -> list[dict] | None:
+    sql = text("""
+        SELECT 
+            g.id, g.name, c.name AS category_name,
+            g.description, g.price, g.release_date, g.image_url
+        FROM games AS g
+        JOIN game_category AS c ON g.type_id = c.id
+        WHERE g.name LIKE :keyword
+        ORDER BY g.id
+    """)
+
+    rows = db.execute(sql, {"keyword": f"%{keyword.lower()}%"}).mappings().all()
+    return rows
+
+
 def get_game(db: Session, game_id: int) -> dict | None:
     result = db.execute(
         text("""
