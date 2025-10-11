@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 class GameBase(BaseModel):
     name: str
-    type_id: int
+    category_id: int
     description: str
     price: float
     image_url: str
@@ -14,7 +14,7 @@ class GameCreate(GameBase):
 
 class GameUpdate(BaseModel):
     name: Optional[str] = None
-    type_id: Optional[int] = None
+    category_id: Optional[int] = None
     description: Optional[str] = None
     price: Optional[float] = None
 

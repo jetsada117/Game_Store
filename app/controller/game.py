@@ -23,7 +23,7 @@ def add_game_category(name: str = Form(...), db: Session = Depends(get_db)):
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_user_with_image(
     name: str = Form(...),
-    type_id: int = Form(...),
+    category_id: int = Form(...),
     description: str = Form(...),
     price: float = Form(...),
     image:  UploadFile = File(...),          
@@ -34,7 +34,7 @@ async def create_user_with_image(
 
     game = GameBase(
         name = name,
-        type_id = type_id,
+        category_id = category_id,
         description = description,
         price = price,
         image_url = ""
@@ -69,7 +69,7 @@ def get_game_by_id(game_id: int, db: Session = Depends(get_db)):
 def update_game_info(
     game_id: int,
     name: str | None = Form(None),
-    type_id: int | None = Form(None),
+    category_id: int | None = Form(None),
     description: str | None = Form(None),
     price: float | None = Form(None),
     image: UploadFile | None = File(None),
@@ -81,7 +81,7 @@ def update_game_info(
 
     payload = GameUpdate(
         name=name if name is not None else current["name"],
-        type_id=type_id if type_id is not None else current["type_id"],
+        category_id=category_id if category_id is not None else current["category_id"],
         description=description if description is not None else current["description"],
         price=price if price is not None else current["price"],
     )

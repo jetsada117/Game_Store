@@ -11,7 +11,7 @@ def get_game_all(db: Session) -> dict | None:
             g.id, g.name, c.name AS category_name,
             g.description, g.price, g.release_date, g.image_url
         FROM games AS g
-        JOIN game_category AS c ON g.type_id = c.id
+        JOIN game_category AS c ON g.category_id = c.id
         ORDER BY g.id
     """)
 
@@ -25,7 +25,7 @@ def get_game_by_name(db: Session, keyword: str) -> list[dict] | None:
             g.id, g.name, c.name AS category_name,
             g.description, g.price, g.release_date, g.image_url
         FROM games AS g
-        JOIN game_category AS c ON g.type_id = c.id
+        JOIN game_category AS c ON g.category_id = c.id
         WHERE g.name LIKE :keyword
         ORDER BY g.id
     """)
@@ -46,7 +46,7 @@ def get_game(db: Session, game_id: int) -> dict | None:
                 g.release_date,
                 g.image_url
             FROM games AS g
-            JOIN game_category AS c ON g.type_id = c.id
+            JOIN game_category AS c ON g.category_id = c.id
             WHERE g.id = :id
         """),
         {"id": game_id}
@@ -83,13 +83,13 @@ def create_game_with_file(db: Session, game, image_file) -> dict | None:
     )
 
     sql = text("""
-        INSERT INTO games (name, type_id, description, price, release_date, image_url, created_at)
-        VALUES (:name, :type_id, :description, :price, :release_date, :image_url, :created_at);
+        INSERT INTO games (name, category_id, description, price, release_date, image_url, created_at)
+        VALUES (:name, :category_id, :description, :price, :release_date, :image_url, :created_at);
     """)
 
     params = {
         "name": game.name,
-        "type_id": game.type_id,
+        "category_id": game.category_id,
         "description": game.description,
         "price": game.price,
         "release_date": thai_date(),
@@ -101,7 +101,7 @@ def create_game_with_file(db: Session, game, image_file) -> dict | None:
     db.commit()
 
     row = db.execute(
-        text("SELECT id, name, type_id, description, price, release_date, image_url, created_at FROM games WHERE name = :name"),
+        text("SELECT id, name, category_id, description, price, release_date, image_url, created_at FROM games WHERE name = :name"),
         {"name": game.name}
     ).mappings().first()
 
@@ -158,7 +158,7 @@ def update_game_without_file(db: Session, game_id: int, game) -> dict:
     sql = text("""
         UPDATE games
         SET name = :name,
-            type_id = :type_id,
+            category_id = :category_id,
             description = :description,
             price = :price
         WHERE id = :id
@@ -167,7 +167,7 @@ def update_game_without_file(db: Session, game_id: int, game) -> dict:
     params = {
         "id": game_id,
         "name": game.name,
-        "type_id": game.type_id,
+        "category_id": game.category_id,
         "description": game.description,
         "price": game.price,
     }
@@ -198,7 +198,7 @@ def update_game_with_file(db: Session, game_id: int, game, image_file: UploadFil
     sql = text("""
         UPDATE games
         SET name = :name,
-            type_id = :type_id,
+            category_id = :category_id,
             description = :description,
             price = :price,
             image_url = :image_url
@@ -208,7 +208,7 @@ def update_game_with_file(db: Session, game_id: int, game, image_file: UploadFil
     params = {
         "id": game_id,
         "name": game.name,
-        "type_id": game.type_id,
+        "category_id": game.category_id,
         "description": game.description,
         "price": game.price,
         "image_url": img_url,
