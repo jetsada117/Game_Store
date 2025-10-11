@@ -79,12 +79,3 @@ def change_password(
     if not result:
         raise HTTPException(status_code=400, detail="Password update failed")
     return {"message": "Password updated successfully"}
-
-@router.post("/wallet/{user_id}", response_model=MoneyUpdate)
-def add_balance(
-    user_id: int = Path(..., gt=0),
-    amount: float = Form(...),
-    db: Session = Depends(get_db)
-):
-    result = crud_user.add_balance(db, user_id, amount)
-    return result
