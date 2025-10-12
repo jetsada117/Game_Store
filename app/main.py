@@ -4,6 +4,7 @@ from app.controller.auth import router as auth_router
 from app.controller.index import router as index_router
 from app.controller.user import router as user_router
 from app.controller.game import router as game_router
+from app.controller.wallet import router as wallet_router
 from app.db import models
 from app.db.database import engine
 
@@ -23,3 +24,4 @@ app.include_router(index_router)
 app.include_router(user_router)
 app.include_router(auth_router)
 app.include_router(game_router) 
+app.include_router(wallet_router)

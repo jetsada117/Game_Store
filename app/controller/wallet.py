@@ -6,7 +6,7 @@ from app.crud import wallet as crud_wallet
 
 router = APIRouter(prefix="/wallet", tags=["Users"])
 
-@router.post("/wallet/{user_id}", response_model=MoneyUpdate)
+@router.post("/topup/{user_id}", response_model=MoneyUpdate)
 def add_balance(
     user_id: int = Path(..., gt=0),
     amount: float = Form(...),
