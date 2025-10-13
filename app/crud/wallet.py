@@ -4,8 +4,6 @@ from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-THAI_TZ = timezone(timedelta(hours=7))
-
 def get_balance(db: Session, user_id: int):
     result = db.execute(
         text("SELECT id, wallet_balance FROM users WHERE id = :id"),
@@ -39,16 +37,15 @@ def add_balance(db: Session, user_id: int, amount: float):
     )
 
     db.execute(
-        text("""
-            INSERT INTO transactions (user_id, type, amount, status, processed_at)
-            VALUES (:user_id, :type, :amount, :status, :processed_at)
-        """),
+    text("""
+        INSERT INTO transactions (user_id, type, amount, status, processed_at)
+        VALUES (:user_id, :type, :amount, :status, NOW())
+    """),
         {
             "user_id": user_id,
             "type": "topup",
             "amount": float(amount),
             "status": "success",
-            "processed_at": datetime.now(THAI_TZ),
         }
     )
 

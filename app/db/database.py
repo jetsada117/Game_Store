@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings  
 
@@ -13,5 +13,10 @@ engine = create_engine(
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 Base = declarative_base()
+
+@event.listens_for(engine, "connect")
+def set_session_time_zone(dbapi_conn, conn_record):
+    cur = dbapi_conn.cursor()
+    cur.execute("SET time_zone = '+07:00'")  # เปลี่ยนเป็น +00:00 ถ้าต้องการ UTC
+    cur.close()
