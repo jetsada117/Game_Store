@@ -14,3 +14,11 @@ def add_balance(
 ):
     result = crud_wallet.add_balance(db, user_id, amount)
     return result
+
+@router.post("/buy/{user_id}/{game_id}")
+def buy_one(user_id: int, game_id: int, db: Session = Depends(get_db)):
+    return crud_wallet.purchase_one_game(db, user_id, game_id)
+
+@router.post("/buy/{user_id}")
+def buy_many(user_id: int, game_ids: list[int], db: Session = Depends(get_db)):
+    return crud_wallet.purchase_games(db, user_id, game_ids)

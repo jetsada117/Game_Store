@@ -219,3 +219,4 @@ def update_game_with_file(db: Session, game_id: int, game, image_file: UploadFil
 
     result = get_game(db, game_id)
     return result
+
