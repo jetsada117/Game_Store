@@ -17,7 +17,11 @@ def get_game_category(db: Session = Depends(get_db)):
 @router.post("/category", status_code=status.HTTP_201_CREATED)
 def add_game_category(name: str = Form(...), db: Session = Depends(get_db)):
     new_type = crud_game.create_game_category(db, name)
-    return {"message": "เพิ่มประเภทเกมสำเร็จ", "data": new_type}
+
+    if not new_type:
+        raise HTTPException(status_code=400, detail="Create user failed")
+    
+    return {"message": "เพิ่มประเภทเกมสำเร็จ"}
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -42,7 +46,7 @@ async def create_user_with_image(
 
     created = crud_game.create_game_with_file(db, game, image) 
     if not created:
-        raise HTTPException(status_code=400, detail="Create user failed")
+        raise HTTPException(status_code=400, detail="Create failed")
     return {"message": "Create updated successfully"}
 
 
