@@ -1,3 +1,4 @@
+from typing import List
 from sqlalchemy import text
 from datetime import datetime
 from fastapi import HTTPException, UploadFile
@@ -220,3 +221,84 @@ def update_game_with_file(db: Session, game_id: int, game, image_file: UploadFil
     result = get_game(db, game_id)
     return result
 
+
+def delete_game_and_dependencies(db: Session, game_id: int):
+    """
+    ลบเกมและความสัมพันธ์ที่อ้างถึงเกมนี้ทั้งหมด
+    - ลบ user_game_licenses ที่ game_id = :gid
+    - ลบ order_items ที่ game_id = :gid
+    - อัปเดต orders ที่ได้รับผลกระทบ (recalc subtotal/total)
+    - ลบเกมจาก games
+    *หมายเหตุ*: ไม่ลบ orders/transactions เพื่อคงประวัติการชำระเงิน
+    """
+    try:
+        game = db.execute(
+            text("SELECT id, name FROM games WHERE id = :gid"),
+            {"gid": game_id}
+        ).mappings().first()
+        if not game:
+            raise HTTPException(status_code=404, detail="ไม่พบเกมที่ต้องการลบ")
+
+        affected_order_ids: List[int] = db.execute(
+            text("""
+                SELECT DISTINCT order_id
+                FROM order_items
+                WHERE game_id = :gid
+            """),
+            {"gid": game_id}
+        ).scalars().all()
+
+        del_licenses = db.execute(
+            text("DELETE FROM user_game_licenses WHERE game_id = :gid"),
+            {"gid": game_id}
+        ).rowcount
+
+        del_order_items = db.execute(
+            text("DELETE FROM order_items WHERE game_id = :gid"),
+            {"gid": game_id}
+        ).rowcount
+
+        updated_orders = 0
+        if affected_order_ids:
+            recalc_rows = db.execute(
+                text("""
+                    SELECT
+                        o.id,
+                        COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS new_subtotal,
+                        o.discount_amount
+                    FROM orders o
+                    LEFT JOIN order_items oi ON oi.order_id = o.id
+                    WHERE o.id IN :oids
+                    GROUP BY o.id, o.discount_amount
+                """),
+                {"oids": tuple(affected_order_ids)}
+            ).mappings().all()
+
+            for r in recalc_rows:
+                new_subtotal = float(r["new_subtotal"] or 0)
+                discount     = float(r["discount_amount"] or 0)
+                new_total    = max(0.0, new_subtotal - discount)
+
+                db.execute(
+                    text("""
+                        UPDATE orders
+                           SET subtotal_amount = :subt,
+                               total_amount    = :tot
+                         WHERE id = :oid
+                    """),
+                    {"subt": new_subtotal, "tot": new_total, "oid": int(r["id"])}
+                )
+                updated_orders += 1
+
+        db.execute(text("DELETE FROM games WHERE id = :gid"), {"gid": game_id})
+
+        db.commit()
+
+        return {"message": f"ลบเกม '{game['name']}' (id={game_id}) สำเร็จ"}
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"ลบเกมไม่สำเร็จ: {e}")

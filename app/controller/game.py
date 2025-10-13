@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.crud import game as crud_game
 from app.db.dependency import get_db
@@ -108,3 +109,8 @@ def update_game_info(
                 content={"message": "ชื่อเกมนี้ถูกใช้แล้ว"}
             )
         raise
+
+
+@router.delete("/{game_id}")
+def delete_game(game_id: int, db: Session = Depends(get_db)):
+    return crud_game.delete_game_and_dependencies(db, game_id)
