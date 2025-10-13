@@ -4,6 +4,16 @@ from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+def get_balance(db: Session, user_id: int):
+    result = db.execute(
+        text("SELECT id, wallet_balance FROM users WHERE id = :id"),
+        {"id": user_id}
+    ).mappings().first()
+    if not result:
+        raise HTTPException(status_code=404, detail="ไม่พบบัญชีผู้ใช้")
+    
+    return result
+
 def add_balance(db: Session, user_id: int, amount: float):
     user = db.execute(
         text("SELECT id, wallet_balance FROM users WHERE id = :id"),
