@@ -76,7 +76,7 @@ def get_transactions_by_user_id(db: Session, user_id: int):
     return row
 
 
-def purchase_games(db: Session, user_id: int, game_ids: Iterable[int]) -> dict:
+def purchase_games(db: Session, user_id: int, game_ids: Iterable[int]):
     """
     ซื้อหลายเกมในครั้งเดียว
     - ตรวจ user, เกม, และการเป็นเจ้าของเดิม
@@ -196,19 +196,7 @@ def purchase_games(db: Session, user_id: int, game_ids: Iterable[int]) -> dict:
         db.commit()
 
         # 10) คืนข้อมูลคำสั่งซื้อ
-        order = {
-            "order_id": order_id,
-            "user_id": user_id,
-            "subtotal_amount": subtotal,
-            "discount_amount": discount,
-            "total_amount": total,
-            "status": "fulfilled",
-            "wallet_balance_after": new_balance,
-            "items": [
-                {"game_id": int(g["id"]), "unit_price": float(g["price"]), "name": g["name"], "quantity": 1}
-                for g in games
-            ]
-        }
+        order = [{"game_id": int(g["id"]), "name": g["name"]} for g in games]
         return order
 
     except HTTPException:

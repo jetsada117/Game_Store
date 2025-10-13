@@ -94,7 +94,7 @@ def update_profile(db: Session, user_id: int, payload) -> dict | None:
 
     if "email" in data_in and data_in["email"]:
         if _email_exists(db, data_in["email"], exclude_user_id=user_id):
-            raise HTTPException(status_code=409, detail="อีเมลนี้ถูกใช้แล้ว")
+            raise HTTPException(status_code=409, message="อีเมลนี้ถูกใช้แล้ว")
         updated["email"] = data_in["email"]
 
     return _update_user_simple(db, user_id, updated)

@@ -24,11 +24,13 @@ def add_balance(
 
 @router.post("/buy/{user_id}/{game_id}")
 def buy_one(user_id: int, game_id: int, db: Session = Depends(get_db)):
-    return crud_wallet.purchase_one_game(db, user_id, game_id)
+    result = crud_wallet.purchase_one_game(db, user_id, game_id)
+    return {"message": "คุณซื้อเกมสำเร็จ!"}
 
 @router.post("/buy/{user_id}")
 def buy_many(user_id: int, game_ids: list[int], db: Session = Depends(get_db)):
-    return crud_wallet.purchase_games(db, user_id, game_ids)
+    result = crud_wallet.purchase_games(db, user_id, game_ids)
+    return {"message": "คุณซื้อเกมสำเร็จ!"}
 
 
 @router.get("/transaction/{user_id}")
