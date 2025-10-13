@@ -177,9 +177,9 @@ def purchase_games(db: Session, user_id: int, game_ids: Iterable[int]):
         db.execute(
             text("""
                 INSERT INTO transactions (user_id, order_id, type, amount, status, processed_at)
-                VALUES (:uid, :oid, 'purchase', :amt, 'SUCCESS', :now)
+                VALUES (:uid, :oid, 'purchase', :amt, 'SUCCESS', :processed_at)
             """),
-            {"uid": user_id, "oid": order_id, "amt": total, "now": datetime.now()}
+            {"uid": user_id, "oid": order_id, "amt": total, "processed_at": thai_date()}
         )
 
         # 8) ออก license ให้ผู้ใช้
