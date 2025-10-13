@@ -31,6 +31,7 @@ class PasswordChange(BaseModel):
 
 class MoneyUpdate(BaseModel):
     id: int
+    amount: float
     wallet_balance: float
 
     class Config:

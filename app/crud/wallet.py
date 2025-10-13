@@ -57,7 +57,10 @@ def add_balance(db: Session, user_id: int, amount: float):
         {"id": user_id}
     ).mappings().first()
 
-    return row
+    return {"id": row.id,
+            "amount": amount,
+            "wallet_balance": row.wallet_balance
+            }
 
 
 def get_transactions_by_user_id(db: Session, user_id: int):
