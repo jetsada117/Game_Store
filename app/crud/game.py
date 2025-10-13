@@ -302,3 +302,24 @@ def delete_game_and_dependencies(db: Session, game_id: int):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"ลบเกมไม่สำเร็จ: {e}")
+    
+
+def get_purchased_games_by_user(db: Session, user_id: int):
+    sql = text("""
+        SELECT 
+            g.id AS id,
+            g.name AS name,
+            gc.name AS category_name,
+            g.description,
+            g.price,
+            g.release_date,
+            g.image_url
+        FROM user_game_licenses ugl
+        JOIN games g ON ugl.game_id = g.id
+        LEFT JOIN game_category gc ON g.category_id = gc.id
+        WHERE ugl.user_id = :uid
+        ORDER BY ugl.acquired_at ASC;
+    """)
+
+    result = db.execute(sql, {"uid": user_id}).mappings().all()
+    return result

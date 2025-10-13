@@ -114,3 +114,8 @@ def update_game_info(
 @router.delete("/{game_id}")
 def delete_game(game_id: int, db: Session = Depends(get_db)):
     return crud_game.delete_game_and_dependencies(db, game_id)
+
+
+@router.get("/user/{user_id}/purchased-games", response_model=List[GameResponse])
+def get_purchased_games(user_id: int, db: Session = Depends(get_db)):
+    return crud_game.get_purchased_games_by_user(db, user_id)

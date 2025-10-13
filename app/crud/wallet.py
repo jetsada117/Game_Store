@@ -75,7 +75,7 @@ def get_transactions_by_user_id(db: Session, user_id: int):
 
     params = {"uid": user_id}
 
-    row = db.execute(sql, params).all()
+    row = db.execute(sql, params).mappings().all()
     return row
 
 
