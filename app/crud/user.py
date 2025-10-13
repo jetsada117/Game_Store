@@ -54,8 +54,10 @@ def create_user_with_file(db: Session, user, image_file) -> dict | None:
 
 
 def get_users(db: Session):
-    result = db.execute(text("SELECT * FROM users"))
-    return result.fetchall()
+    result = db.execute(
+        text("SELECT * FROM users WHERE role != 'ADMIN'")
+    ).mappings().all()
+    return result
 
 
 def get_user_by_email(db: Session, email: str):

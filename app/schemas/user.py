@@ -13,6 +13,7 @@ class UserResponse(BaseModel):
     email: str 
     img_url: str
     role: str
+    wallet_balance: float
 
     class Config:
         from_attributes = True
