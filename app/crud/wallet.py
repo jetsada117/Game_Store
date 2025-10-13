@@ -1,8 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Iterable
 from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+THAI_TZ = timezone(timedelta(hours=7))
 
 def get_balance(db: Session, user_id: int):
     result = db.execute(
@@ -46,7 +48,7 @@ def add_balance(db: Session, user_id: int, amount: float):
             "type": "topup",
             "amount": float(amount),
             "status": "success",
-            "processed_at": datetime.now(),
+            "processed_at": datetime.now(THAI_TZ),
         }
     )
 
