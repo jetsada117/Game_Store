@@ -223,3 +223,16 @@ def purchase_games(db: Session, user_id: int, game_ids: Iterable[int]) -> dict:
 def purchase_one_game(db: Session, user_id: int, game_id: int) -> dict:
     """ซื้อเกมเดี่ยว สะดวกๆ"""
     return purchase_games(db, user_id, [game_id])
+
+
+def get_user_transactions(db: Session, user_id: int):
+    rows = db.execute(
+        text("""
+            SELECT id, user_id, type, order_id, amount, status, processed_at
+            FROM transactions
+            WHERE user_id = :uid
+            ORDER BY processed_at DESC
+        """),
+        {"uid": user_id}
+    ).mappings().all()
+    return rows

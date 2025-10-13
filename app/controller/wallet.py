@@ -29,3 +29,8 @@ def buy_one(user_id: int, game_id: int, db: Session = Depends(get_db)):
 @router.post("/buy/{user_id}")
 def buy_many(user_id: int, game_ids: list[int], db: Session = Depends(get_db)):
     return crud_wallet.purchase_games(db, user_id, game_ids)
+
+
+@router.get("/transaction/{user_id}")
+def my_transactions(user_id: int, db: Session = Depends(get_db)):
+    return crud_wallet.get_user_transactions(db, user_id)
