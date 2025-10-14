@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, Form, Path
 from sqlalchemy.orm import Session
 from app.db.dependency import get_db
@@ -36,3 +37,29 @@ def buy_many(user_id: int, game_ids: list[int], db: Session = Depends(get_db)):
 @router.get("/transaction/{user_id}")
 def my_transactions(user_id: int, db: Session = Depends(get_db)):
     return crud_wallet.get_user_transactions(db, user_id)
+
+from fastapi import Form
+
+@router.post("/discount")
+def create_discount_form(
+    type: str = Form("percent"),
+    value: float = Form(...),
+    max_discount: float = Form(...),
+    start_at: str = Form(...),
+    end_at: str = Form(...),
+    usage_limit: int = Form(...),
+    status: str = Form("active"),
+    db: Session = Depends(get_db)
+):
+    result = crud_wallet.create_discount_code(
+        db,
+        type_ = type,
+        value = value,
+        max_discount = max_discount,
+        start_at = start_at,
+        end_at = end_at,
+        usage_limit = usage_limit,
+        status = status
+    )
+
+    return result

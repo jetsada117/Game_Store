@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta, timezone
-from typing import Iterable
+from typing import Iterable, Literal, Optional
 from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.utils.function import thai_date
+from app.utils import function 
 
 def get_balance(db: Session, user_id: int):
     result = db.execute(
@@ -48,7 +48,7 @@ def add_balance(db: Session, user_id: int, amount: float):
             "type": "topup",
             "amount": float(amount),
             "status": "success",
-            "processed_at": thai_date()
+            "processed_at": function.thai_date()
         }
     )
 
@@ -179,7 +179,7 @@ def purchase_games(db: Session, user_id: int, game_ids: Iterable[int]):
                 INSERT INTO transactions (user_id, order_id, type, amount, status, processed_at)
                 VALUES (:uid, :oid, 'purchase', :amt, 'SUCCESS', :processed_at)
             """),
-            {"uid": user_id, "oid": order_id, "amt": total, "processed_at": thai_date()}
+            {"uid": user_id, "oid": order_id, "amt": total, "processed_at": function.thai_date()}
         )
 
         # 8) ออก license ให้ผู้ใช้
@@ -226,3 +226,81 @@ def get_user_transactions(db: Session, user_id: int):
         {"uid": user_id}
     ).mappings().all()
     return rows
+
+
+def create_discount_code(
+    db: Session,
+    start_at: str,
+    end_at: str,
+    usage_limit: int,
+    type_: Literal["percent", "fixed"] = "percent",
+    value: float = 0,
+    max_discount: Optional[float] = None,
+    status: Literal["active", "inactive"] = "active",
+):
+    code = function._gen_code(6).upper().strip()
+
+    if type_ not in ("percent", "fixed"):
+        raise HTTPException(status_code=400, detail="type ต้องเป็น 'percent' หรือ 'fixed'")
+
+    try:
+        value = float(value)
+    except Exception:
+        raise HTTPException(status_code=400, detail="value ต้องเป็นตัวเลข")
+
+    if type_ == "percent":
+        if not (0 < value <= 100):
+            raise HTTPException(status_code=400, detail="value (percent) ต้องอยู่ในช่วง 0–100")
+        if max_discount is not None and float(max_discount) <= 0:
+            raise HTTPException(status_code=400, detail="max_discount ต้องมากกว่า 0")
+    else: 
+        if value <= 0:
+            raise HTTPException(status_code=400, detail="value (fixed) ต้องมากกว่า 0")
+        max_discount = None
+
+    if start_at and end_at and start_at > end_at:
+        raise HTTPException(status_code=400, detail="start_at ต้องน้อยกว่าหรือเท่ากับ end_at")
+
+    if usage_limit is not None and int(usage_limit) <= 0:
+        raise HTTPException(status_code=400, detail="usage_limit ต้องมากกว่า 0")
+
+    exists = db.execute(
+        text("SELECT id FROM discount_codes WHERE code = :code"),
+        {"code": code},
+    ).first()
+
+    if exists:
+        raise HTTPException(status_code=400, detail="โค้ดนี้ถูกใช้แล้ว")
+
+    try:
+        params = {
+            "code": code,
+            "type_": type_,
+            "value": value,
+            "max_discount": max_discount,
+            "start_at": start_at,
+            "end_at": end_at,
+            "usage_limit": usage_limit,
+            "status": status,
+        }
+
+        result = db.execute(
+            text("""
+                INSERT INTO discount_codes
+                    (code, type, value, max_discount, start_at, end_at, usage_limit, status)
+                VALUES
+                    (:code, :type_, :value, :max_discount, :start_at, :end_at, :usage_limit, :status)
+            """),
+            params,
+        )
+        new_id = result.lastrowid
+        db.commit()
+
+        return {"message": "สร้างโค้ดสำเร็จ"}
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"สร้างโค้ดส่วนลดล้มเหลว: {e}")
