@@ -33,13 +33,3 @@ class GameResponse(BaseModel):
 class GameCategory(BaseModel):
     id: int
     name: str
-
-
-class DiscountCreate(BaseModel):
-    type_: Literal["percent", "fixed"] = "percent"
-    value: float = 0
-    max_discount: Optional[float] = None
-    start_at: Optional[datetime] = None
-    end_at: Optional[datetime] = None
-    usage_limit: Optional[int] = None
-    status: Literal["active", "inactive"] = "active"

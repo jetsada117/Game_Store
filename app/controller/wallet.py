@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 from fastapi import APIRouter, Depends, Form, Path
 from sqlalchemy.orm import Session
 from app.db.dependency import get_db
@@ -14,6 +14,7 @@ def get_balance(
 ):
     return crud_wallet.get_balance(db, user_id)
 
+
 @router.post("/topup/{user_id}", response_model=MoneyUpdate)
 def add_balance(
     user_id: int = Path(..., gt=0),
@@ -23,10 +24,12 @@ def add_balance(
     result = crud_wallet.add_balance(db, user_id, amount)
     return result
 
+
 @router.post("/buy/{user_id}/{game_id}")
 def buy_one(user_id: int, game_id: int, db: Session = Depends(get_db)):
     result = crud_wallet.purchase_one_game(db, user_id, game_id)
     return {"message": "คุณซื้อเกมสำเร็จ!"}
+
 
 @router.post("/buy/{user_id}")
 def buy_many(user_id: int, game_ids: list[int], db: Session = Depends(get_db)):
@@ -38,7 +41,6 @@ def buy_many(user_id: int, game_ids: list[int], db: Session = Depends(get_db)):
 def my_transactions(user_id: int, db: Session = Depends(get_db)):
     return crud_wallet.get_user_transactions(db, user_id)
 
-from fastapi import Form
 
 @router.post("/discount")
 def create_discount_form(
@@ -63,3 +65,35 @@ def create_discount_form(
     )
 
     return result
+
+
+@router.put("/discount/{code_id}")
+def update_discount(
+    code_id: int,
+    type: Optional[Literal["percent", "fixed"]] = Form(None),
+    value: Optional[float] = Form(None),
+    max_discount: Optional[float] = Form(None),
+    start_at: Optional[str] = Form(None),
+    end_at: Optional[str] = Form(None),
+    usage_limit: Optional[int] = Form(None),
+    status: Optional[Literal["active", "inactive"]] = Form(None),
+    db: Session = Depends(get_db),
+):
+    result = crud_wallet.update_discount_code(
+        db=db,
+        code_id=code_id,
+        type_=type,
+        value=value,
+        max_discount=max_discount,
+        start_at=start_at,
+        end_at=end_at,
+        usage_limit=usage_limit,
+        status=status,
+    )
+
+    return result
+
+
+@router.delete("/discount/{code_id}")
+def delete_code(code_id: int, db: Session = Depends(get_db)):
+    return crud_wallet.delete_discount_code(db, code_id)
