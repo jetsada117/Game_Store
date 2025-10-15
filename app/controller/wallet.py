@@ -97,3 +97,13 @@ def update_discount(
 @router.delete("/discount/{code_id}")
 def delete_code(code_id: int, db: Session = Depends(get_db)):
     return crud_wallet.delete_discount_code(db, code_id)
+
+
+@router.get("/discount/{code_id}")
+def read_discount_by_id(code_id: int, db: Session = Depends(get_db)):
+    return crud_wallet.get_discount_code(db, code_id)
+
+
+@router.get("/discount/")
+def read_discount_by_code(code: str, db: Session = Depends(get_db)):
+    return crud_wallet.get_discount_code_by_codeva(db, code)

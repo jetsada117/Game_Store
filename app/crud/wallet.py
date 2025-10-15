@@ -396,3 +396,59 @@ def delete_discount_code(db: Session, code_id: int):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"ลบโค้ดส่วนลดล้มเหลว: {e}")
+    
+
+def get_discount_code_by_codeva(db: Session, code: str):
+    """
+    ดึงข้อมูลโค้ดส่วนลดตามรหัสโค้ด (เช่น JF8LA9)
+    """
+    result = db.execute(
+        text("""
+            SELECT 
+                id, 
+                code, 
+                type, 
+                value, 
+                max_discount, 
+                start_at, 
+                end_at, 
+                usage_limit, 
+                status
+            FROM discount_codes
+            WHERE code = :code
+        """),
+        {"code": code}
+    ).mappings().first()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="ไม่พบโค้ดส่วนลดนี้")
+
+    return result
+
+
+def get_discount_code(db: Session, code_id: int):
+    """
+    ดึงข้อมูลโค้ดส่วนลดตาม id
+    """
+    result = db.execute(
+        text("""
+            SELECT 
+                id, 
+                code, 
+                type, 
+                value, 
+                max_discount, 
+                start_at, 
+                end_at, 
+                usage_limit, 
+                status
+            FROM discount_codes
+            WHERE id = :id
+        """),
+        {"id": code_id}
+    ).mappings().first()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="ไม่พบโค้ดส่วนลดนี้")
+
+    return result
