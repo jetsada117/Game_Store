@@ -227,7 +227,6 @@ def get_user_transactions(db: Session, user_id: int):
     ).mappings().all()
     return rows
 
-
 # ---------- CREATE CODE ----------
 def create_discount_code(
     db: Session,
@@ -407,3 +406,29 @@ def get_discount_code(db: Session, code_id: int):
         raise HTTPException(status_code=404, detail="ไม่พบโค้ดส่วนลดนี้")
 
     return row
+
+# ---------- READ (all code) ----------
+def get_all_discount_codes(db: Session):
+    try:
+        rows = db.execute(
+            text("""
+                SELECT 
+                    id, 
+                    code, 
+                    type, 
+                    value, 
+                    max_discount, 
+                    usage_limit, 
+                    status
+                FROM discount_codes
+                ORDER BY id DESC
+            """)
+        ).mappings().all()
+
+        if not rows:
+            raise HTTPException(status_code=404, detail="ยังไม่มีโค้ดส่วนลดในระบบ")
+
+        return rows
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ไม่สามารถดึงข้อมูลโค้ดส่วนลดได้: {e}")
