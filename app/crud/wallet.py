@@ -437,3 +437,26 @@ def get_all_discount_codes(db: Session):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"ไม่สามารถดึงข้อมูลโค้ดส่วนลดได้: {e}")
+
+# ---------- READ (all code and usage) ----------
+def get_all_discount_codes_with_usage(db):
+    sql = text("""
+        SELECT
+        dc.id,
+        dc.code,
+        dc.type,
+        dc.value,
+        dc.max_discount,
+        dc.usage_limit,
+        dc.status,
+        COALESCE(COUNT(dr.id), 0) AS used_count
+        FROM discount_codes dc
+        LEFT JOIN discount_redemptions dr
+        ON dr.code_id = dc.id
+        GROUP BY
+        dc.id, dc.code, dc.type, dc.value, dc.max_discount,
+        dc.usage_limit, dc.status
+        ORDER BY dc.created_at DESC
+    """)
+    rows = db.execute(sql).mappings().all()
+    return rows

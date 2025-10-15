@@ -44,20 +44,22 @@ def my_transactions(user_id: int, db: Session = Depends(get_db)):
 
 @router.post("/discount")
 def create_discount_form(
+    code: Optional[str] = Form(None),               
     type: str = Form("percent"),
     value: float = Form(...),
-    max_discount: float = Form(...),
+    max_discount: Optional[float] = Form(None),
     usage_limit: int = Form(...),
     status: str = Form("active"),
     db: Session = Depends(get_db)
 ):
     result = crud_wallet.create_discount_code(
-        db,
-        type_ = type,
-        value = value,
-        max_discount = max_discount,
-        usage_limit = usage_limit,
-        status = status
+        db=db,
+        code=code,                     
+        type_=type,
+        value=value,
+        max_discount=max_discount,
+        usage_limit=usage_limit,
+        status=status,
     )
 
     return result
@@ -91,17 +93,22 @@ def read_all_discounts(db: Session = Depends(get_db)):
     return crud_wallet.get_all_discount_codes(db)
 
 
+@router.get("/discount/allwithusage")
+def read_all_discounts(db: Session = Depends(get_db)):
+    return crud_wallet.get_all_discount_codes_with_usage(db)
+
+
 @router.delete("/discount/{code_id}")
 def delete_code(code_id: int, db: Session = Depends(get_db)):
     return crud_wallet.delete_discount_code(db, code_id)
 
 
+@router.get("/discount/search/")
+def read_discount_by_code(code: str, db: Session = Depends(get_db)):
+    return crud_wallet.get_discount_code_by_codeva(db, code)
+
+
 @router.get("/discount/{code_id}")
 def read_discount_by_id(code_id: int, db: Session = Depends(get_db)):
     return crud_wallet.get_discount_code(db, code_id)
-
-
-@router.get("/discount")
-def read_discount_by_code(code: str, db: Session = Depends(get_db)):
-    return crud_wallet.get_discount_code_by_codeva(db, code)
 
