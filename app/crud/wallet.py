@@ -231,12 +231,16 @@ def get_user_transactions(db: Session, user_id: int):
 def create_discount_code(
     db: Session,
     usage_limit: int,
+    code: Optional[str] = None,  
     type_: Literal["percent", "fixed"] = "percent",
     value: float = 0,
     max_discount: Optional[float] = None,
     status: Literal["active", "inactive"] = "active",
 ):
-    code = function._gen_code(6).upper().strip()
+    if not code or code.strip() == "":
+        code = function._gen_code(6).upper().strip()
+    else:
+        code = code.upper().strip()
 
     if type_ not in ("percent", "fixed"):
         raise HTTPException(status_code=400, detail="type ต้องเป็น 'percent' หรือ 'fixed'")
@@ -285,7 +289,8 @@ def create_discount_code(
             params,
         )
         db.commit()
-        return {"message": "สร้างโค้ดสำเร็จ", "code": code}
+        return {"message": "สร้างโค้ดสำเร็จ"}
+    
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"สร้างโค้ดส่วนลดล้มเหลว: {e}")

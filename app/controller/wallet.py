@@ -47,8 +47,6 @@ def create_discount_form(
     type: str = Form("percent"),
     value: float = Form(...),
     max_discount: float = Form(...),
-    start_at: str = Form(...),
-    end_at: str = Form(...),
     usage_limit: int = Form(...),
     status: str = Form("active"),
     db: Session = Depends(get_db)
@@ -58,8 +56,6 @@ def create_discount_form(
         type_ = type,
         value = value,
         max_discount = max_discount,
-        start_at = start_at,
-        end_at = end_at,
         usage_limit = usage_limit,
         status = status
     )
@@ -73,8 +69,6 @@ def update_discount(
     type: Optional[Literal["percent", "fixed"]] = Form(None),
     value: Optional[float] = Form(None),
     max_discount: Optional[float] = Form(None),
-    start_at: Optional[str] = Form(None),
-    end_at: Optional[str] = Form(None),
     usage_limit: Optional[int] = Form(None),
     status: Optional[Literal["active", "inactive"]] = Form(None),
     db: Session = Depends(get_db),
@@ -85,8 +79,6 @@ def update_discount(
         type_=type,
         value=value,
         max_discount=max_discount,
-        start_at=start_at,
-        end_at=end_at,
         usage_limit=usage_limit,
         status=status,
     )
