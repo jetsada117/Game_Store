@@ -73,6 +73,7 @@ def update_discount(
     max_discount: Optional[float] = Form(None),
     usage_limit: Optional[int] = Form(None),
     status: Optional[Literal["active", "inactive"]] = Form(None),
+    code: Optional[str] = Form(None),  
     db: Session = Depends(get_db),
 ):
     result = crud_wallet.update_discount_code(
@@ -83,8 +84,8 @@ def update_discount(
         max_discount=max_discount,
         usage_limit=usage_limit,
         status=status,
+        new_code=code,                   
     )
-
     return result
 
 

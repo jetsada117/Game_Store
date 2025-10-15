@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import re
 from typing import Iterable, Literal, Optional
 from fastapi import HTTPException
 from sqlalchemy import text
@@ -297,50 +298,57 @@ def create_discount_code(
 
 # ---------- UPDATE CODE ----------
 def update_discount_code(
-    db: Session,
+    db,
     code_id: int,
     type_: Optional[Literal["percent", "fixed"]] = None,
     value: Optional[float] = None,
     max_discount: Optional[float] = None,
     usage_limit: Optional[int] = None,
     status: Optional[Literal["active", "inactive"]] = None,
+    new_code: Optional[str] = None,          # 👈 เพิ่มพารามิเตอร์นี้
 ):
     cur = db.execute(
-        text("""SELECT id, type, value, max_discount, usage_limit, status
-                FROM discount_codes WHERE id = :id"""),
+        text("""
+            SELECT id, code, type, value, max_discount, usage_limit, status
+            FROM discount_codes WHERE id = :id
+        """),
         {"id": code_id},
     ).mappings().first()
     if not cur:
         raise HTTPException(status_code=404, detail="ไม่พบโค้ดส่วนลดนี้")
 
+    # --- เตรียมค่าใหม่ ---
     new_type = type_ if type_ is not None else cur["type"]
     new_value = float(value) if value is not None else float(cur["value"])
-    # ถ้าเป็น percent ให้คง/อัปเดต max_discount; ถ้าเป็น fixed ให้เป็น None
+
     if new_type == "percent":
         new_max = float(max_discount) if max_discount is not None else (
             float(cur["max_discount"]) if cur["max_discount"] is not None else None
         )
-    else:  # fixed
-        new_max = None
+    else:
+        new_max = None  # fixed
 
-    new_limit = int(usage_limit) if usage_limit is not None else cur["usage_limit"]
+    new_limit  = int(usage_limit) if usage_limit is not None else cur["usage_limit"]
     new_status = status if status is not None else cur["status"]
 
-    # validate
+    # --- ตรวจสอบความถูกต้องเชิงธุรกิจ ---
     if new_type not in ("percent", "fixed"):
         raise HTTPException(status_code=400, detail="type ต้องเป็น 'percent' หรือ 'fixed'")
+
     if new_type == "percent":
         if not (0 < new_value <= 100):
             raise HTTPException(status_code=400, detail="value (percent) ต้องอยู่ในช่วง 0–100")
         if new_max is not None and float(new_max) <= 0:
             raise HTTPException(status_code=400, detail="max_discount ต้องมากกว่า 0")
-    else:
+    else:  # fixed
         if new_value <= 0:
             raise HTTPException(status_code=400, detail="value (fixed) ต้องมากกว่า 0")
         new_max = None
+
     if new_limit is not None and int(new_limit) <= 0:
         raise HTTPException(status_code=400, detail="usage_limit ต้องมากกว่า 0")
 
+    # --- เตรียมอัปเดตฟิลด์ ---
     fields = {
         "type": new_type,
         "value": new_value,
@@ -348,6 +356,24 @@ def update_discount_code(
         "usage_limit": new_limit,
         "status": new_status,
     }
+
+    # ถ้ามีการส่ง new_code เข้ามา → ตรวจรูปแบบและเช็คซ้ำ
+    if new_code is not None:
+        normalized = new_code.strip().upper()
+        # ตรวจความยาว/รูปแบบ (อนุญาต A-Z และ 0-9 เท่านั้น)
+        if not (1 <= len(normalized) <= 32) or not re.fullmatch(r"[A-Z0-9]+", normalized):
+            raise HTTPException(status_code=400, detail="รูปแบบโค้ดไม่ถูกต้อง (ต้องเป็น A–Z/0–9 ยาว 1–32 ตัว)")
+
+        if normalized != cur["code"]:
+            dup = db.execute(
+                text("SELECT id FROM discount_codes WHERE code = :c AND id <> :id"),
+                {"c": normalized, "id": code_id},
+            ).first()
+            if dup:
+                raise HTTPException(status_code=400, detail="โค้ดนี้ถูกใช้อยู่แล้ว")
+        fields["code"] = normalized
+
+    # --- สร้าง SET clause แบบไดนามิก ---
     set_parts = []
     params = {"id": code_id}
     for k, v in fields.items():
@@ -399,8 +425,7 @@ def get_discount_code(db: Session, code_id: int):
     row = db.execute(
         text("""
             SELECT 
-                id, code, type, value, max_discount, usage_limit, status,
-                created_at, updated_at
+                id, code, type, value, max_discount, usage_limit, status
             FROM discount_codes
             WHERE id = :id
         """),
