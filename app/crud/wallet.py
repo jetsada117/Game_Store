@@ -452,3 +452,184 @@ def get_discount_code(db: Session, code_id: int):
         raise HTTPException(status_code=404, detail="ไม่พบโค้ดส่วนลดนี้")
 
     return result
+
+
+# ---------- CREATE ----------
+def create_discount_code(
+    db: Session,
+    usage_limit: int,
+    type_: Literal["percent", "fixed"] = "percent",
+    value: float = 0,
+    max_discount: Optional[float] = None,
+    status: Literal["active", "inactive"] = "active",
+):
+    code = function._gen_code(6).upper().strip()
+
+    if type_ not in ("percent", "fixed"):
+        raise HTTPException(status_code=400, detail="type ต้องเป็น 'percent' หรือ 'fixed'")
+
+    try:
+        value = float(value)
+    except Exception:
+        raise HTTPException(status_code=400, detail="value ต้องเป็นตัวเลข")
+
+    if type_ == "percent":
+        if not (0 < value <= 100):
+            raise HTTPException(status_code=400, detail="value (percent) ต้องอยู่ในช่วง 0–100")
+        if max_discount is not None and float(max_discount) <= 0:
+            raise HTTPException(status_code=400, detail="max_discount ต้องมากกว่า 0")
+    else:  # fixed
+        if value <= 0:
+            raise HTTPException(status_code=400, detail="value (fixed) ต้องมากกว่า 0")
+        max_discount = None
+
+    if usage_limit is not None and int(usage_limit) <= 0:
+        raise HTTPException(status_code=400, detail="usage_limit ต้องมากกว่า 0")
+
+    exists = db.execute(
+        text("SELECT id FROM discount_codes WHERE code = :code"),
+        {"code": code},
+    ).first()
+    if exists:
+        raise HTTPException(status_code=400, detail="โค้ดนี้ถูกใช้แล้ว")
+
+    try:
+        params = {
+            "code": code,
+            "type_": type_,
+            "value": value,
+            "max_discount": max_discount,
+            "usage_limit": usage_limit,
+            "status": status,
+        }
+        db.execute(
+            text("""
+                INSERT INTO discount_codes
+                    (code, type, value, max_discount, usage_limit, status)
+                VALUES
+                    (:code, :type_, :value, :max_discount, :usage_limit, :status)
+            """),
+            params,
+        )
+        db.commit()
+        return {"message": "สร้างโค้ดสำเร็จ", "code": code}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"สร้างโค้ดส่วนลดล้มเหลว: {e}")
+
+# ---------- UPDATE CODE ----------
+def update_discount_code(
+    db: Session,
+    code_id: int,
+    type_: Optional[Literal["percent", "fixed"]] = None,
+    value: Optional[float] = None,
+    max_discount: Optional[float] = None,
+    usage_limit: Optional[int] = None,
+    status: Optional[Literal["active", "inactive"]] = None,
+):
+    cur = db.execute(
+        text("""SELECT id, type, value, max_discount, usage_limit, status
+                FROM discount_codes WHERE id = :id"""),
+        {"id": code_id},
+    ).mappings().first()
+    if not cur:
+        raise HTTPException(status_code=404, detail="ไม่พบโค้ดส่วนลดนี้")
+
+    new_type = type_ if type_ is not None else cur["type"]
+    new_value = float(value) if value is not None else float(cur["value"])
+    # ถ้าเป็น percent ให้คง/อัปเดต max_discount; ถ้าเป็น fixed ให้เป็น None
+    if new_type == "percent":
+        new_max = float(max_discount) if max_discount is not None else (
+            float(cur["max_discount"]) if cur["max_discount"] is not None else None
+        )
+    else:  # fixed
+        new_max = None
+
+    new_limit = int(usage_limit) if usage_limit is not None else cur["usage_limit"]
+    new_status = status if status is not None else cur["status"]
+
+    # validate
+    if new_type not in ("percent", "fixed"):
+        raise HTTPException(status_code=400, detail="type ต้องเป็น 'percent' หรือ 'fixed'")
+    if new_type == "percent":
+        if not (0 < new_value <= 100):
+            raise HTTPException(status_code=400, detail="value (percent) ต้องอยู่ในช่วง 0–100")
+        if new_max is not None and float(new_max) <= 0:
+            raise HTTPException(status_code=400, detail="max_discount ต้องมากกว่า 0")
+    else:
+        if new_value <= 0:
+            raise HTTPException(status_code=400, detail="value (fixed) ต้องมากกว่า 0")
+        new_max = None
+    if new_limit is not None and int(new_limit) <= 0:
+        raise HTTPException(status_code=400, detail="usage_limit ต้องมากกว่า 0")
+
+    fields = {
+        "type": new_type,
+        "value": new_value,
+        "max_discount": new_max,
+        "usage_limit": new_limit,
+        "status": new_status,
+    }
+    set_parts = []
+    params = {"id": code_id}
+    for k, v in fields.items():
+        set_parts.append(f"{k} = :{k}")
+        params[k] = v
+
+    try:
+        db.execute(
+            text(f"UPDATE discount_codes SET {', '.join(set_parts)} WHERE id = :id"),
+            params,
+        )
+        db.commit()
+        return {"message": "อัปเดตโค้ดส่วนลดสำเร็จ", "id": code_id}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"อัปเดตโค้ดส่วนลดล้มเหลว: {e}")
+
+# ---------- DELETE CODE ----------
+def delete_discount_code(db: Session, code_id: int):
+    # ถ้าต้องการบังคับห้ามลบเมื่อมีการใช้งานแล้ว ให้เช็กตาราง redemptions ตรงนี้
+    try:
+        db.execute(text("DELETE FROM discount_codes WHERE id = :id"), {"id": code_id})
+        db.commit()
+        return {"message": "ลบโค้ดส่วนลดสำเร็จ"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"ลบโค้ดส่วนลดล้มเหลว: {e}")
+
+# ---------- READ (by code) ----------
+def get_discount_code_by_codeva(db: Session, code: str):
+    row = db.execute(
+        text("""
+            SELECT 
+                id, code, type, value, max_discount, usage_limit, status,
+                created_at, updated_at
+            FROM discount_codes
+            WHERE code = :code
+        """),
+        {"code": code}
+    ).mappings().first()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="ไม่พบโค้ดส่วนลดนี้")
+
+    return row
+
+# ---------- READ (by id) ----------
+def get_discount_code(db: Session, code_id: int):
+    row = db.execute(
+        text("""
+            SELECT 
+                id, code, type, value, max_discount, usage_limit, status,
+                created_at, updated_at
+            FROM discount_codes
+            WHERE id = :id
+        """),
+        {"id": code_id}
+    ).mappings().first()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="ไม่พบโค้ดส่วนลดนี้")
+
+    return row
