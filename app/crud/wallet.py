@@ -360,7 +360,7 @@ def update_discount_code(
             params,
         )
         db.commit()
-        return {"message": "อัปเดตโค้ดส่วนลดสำเร็จ", "id": code_id}
+        return {"message": "อัปเดตโค้ดส่วนลดสำเร็จ"}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"อัปเดตโค้ดส่วนลดล้มเหลว: {e}")
