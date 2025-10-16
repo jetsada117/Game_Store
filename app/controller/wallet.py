@@ -1,5 +1,5 @@
 from typing import Literal, Optional
-from fastapi import APIRouter, Depends, Form, Path
+from fastapi import APIRouter, Depends, Form, HTTPException, Path
 from sqlalchemy.orm import Session
 from app.db.dependency import get_db
 from app.schemas.user import MoneyUpdate
@@ -7,13 +7,13 @@ from app.crud import wallet as crud_wallet
 
 router = APIRouter(prefix="/wallet", tags=["Users"])
 
-@router.get("/{user_id}")
+
+@router.get("/read/{user_id}")
 def get_balance(
-    user_id: int =  Path(..., get=0),
+    user_id: int = Path(..., gt=0),
     db: Session = Depends(get_db)
 ):
     return crud_wallet.get_balance(db, user_id)
-
 
 @router.post("/topup/{user_id}", response_model=MoneyUpdate)
 def add_balance(
@@ -23,16 +23,6 @@ def add_balance(
 ):
     result = crud_wallet.add_balance(db, user_id, amount)
     return result
-
-
-from fastapi import APIRouter, Depends, Form, Query
-from sqlalchemy.orm import Session
-from app.db.dependency import get_db
-from app.crud import wallet as crud_wallet
-from fastapi import HTTPException
-from sqlalchemy.sql import text
-
-router = APIRouter(prefix="/wallet", tags=["Users"])
 
 
 @router.post("/buy/{user_id}/{game_id}")
@@ -162,4 +152,3 @@ def read_discount_by_code(code: str, db: Session = Depends(get_db)):
 @router.get("/discount/{code_id}")
 def read_discount_by_id(code_id: int, db: Session = Depends(get_db)):
     return crud_wallet.get_discount_code(db, code_id)
-
