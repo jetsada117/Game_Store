@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.utils import function 
 
+# ---------- READ WALLET BALANCE BY ID ----------
 def get_balance(db: Session, user_id: int):
     result = db.execute(
         text("SELECT id, wallet_balance FROM users WHERE id = :id"),
@@ -17,6 +18,7 @@ def get_balance(db: Session, user_id: int):
     
     return result
 
+# ---------- ADD WALLET BALANCE ----------
 def add_balance(db: Session, user_id: int, amount: float):
     user = db.execute(
         text("SELECT id, wallet_balance FROM users WHERE id = :id"),
@@ -65,7 +67,7 @@ def add_balance(db: Session, user_id: int, amount: float):
             "wallet_balance": row.wallet_balance
             }
 
-
+# ---------- READ TRANSACTION BY ID ----------
 def get_transactions_by_user_id(db: Session, user_id: int):
     sql = text("""
         SELECT id, user_id, type, order_id, amount, status, processed_at
@@ -116,7 +118,7 @@ def _calc_discount(subtotal: float, dc: dict) -> float:
         disc = min(val, subtotal)
     return max(0.0, round(disc, 2))
 
-
+# ---------- BUY GAME ----------
 def purchase_games(
     db: Session,
     user_id: int,
@@ -254,7 +256,7 @@ def purchase_games(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"เกิดข้อผิดพลาดระหว่างทำรายการ: {e}")
 
-
+# ---------- BUY GAME ONLY ONE ----------
 def purchase_one_game(
     db: Session,
     user_id: int,
@@ -263,7 +265,7 @@ def purchase_one_game(
 ):
     return purchase_games(db, user_id, [game_id], discount_code_id=discount_code_id)
 
-
+# ---------- READ TRANSACTION ----------
 def get_user_transactions(db: Session, user_id: int):
     rows = db.execute(
         text("""
