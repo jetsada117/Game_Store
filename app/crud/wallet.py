@@ -453,8 +453,7 @@ def get_discount_code_by_codeva(db: Session, code: str):
     row = db.execute(
         text("""
             SELECT 
-                id, code, type, value, max_discount, usage_limit, status,
-                created_at, updated_at
+                id, code, type, value, max_discount, usage_limit, status
             FROM discount_codes
             WHERE code = :code
         """),
