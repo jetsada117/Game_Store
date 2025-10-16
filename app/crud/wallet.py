@@ -80,24 +80,57 @@ def get_transactions_by_user_id(db: Session, user_id: int):
     return row
 
 
-def purchase_games(db: Session, user_id: int, game_ids: Iterable[int]):
-    """
-    ซื้อหลายเกมในครั้งเดียว
-    - ตรวจ user, เกม, และการเป็นเจ้าของเดิม
-    - คำนวณยอดรวมและหักเงิน wallet
-    - สร้าง order + order_items + transactions
-    - ออก user_game_licenses
-    คืน: ข้อมูลคำสั่งซื้อ (order) และรายการเกมที่ซื้อ
-    """
-    # เตรียมข้อมูลเบื้องต้น
+def _load_discount(db, code_id: int):
+    dc = db.execute(
+        text("""
+            SELECT id, code, type, value, max_discount, usage_limit, status
+            FROM discount_codes
+            WHERE id = :cid
+        """),
+        {"cid": code_id},
+    ).mappings().first()
+    if not dc:
+        raise HTTPException(status_code=404, detail="ไม่พบโค้ดส่วนลดนี้")
+    if dc["status"] != "active":
+        raise HTTPException(status_code=400, detail="โค้ดนี้ไม่พร้อมใช้งาน")
+
+    used = db.execute(
+        text("SELECT COUNT(*) FROM discount_redemptions WHERE code_id = :cid"),
+        {"cid": code_id},
+    ).scalar() or 0
+
+    if dc["usage_limit"] is not None and used >= int(dc["usage_limit"]):
+        raise HTTPException(status_code=400, detail="โค้ดนี้ถูกใช้ครบจำนวนแล้ว")
+
+    return dc
+
+
+def _calc_discount(subtotal: float, dc: dict) -> float:
+    t = dc["type"]
+    val = float(dc["value"])
+    if t == "percent":
+        disc = subtotal * (val / 100.0)
+        if dc["max_discount"] is not None:
+            disc = min(disc, float(dc["max_discount"]))
+    else:
+        disc = min(val, subtotal)
+    return max(0.0, round(disc, 2))
+
+
+def purchase_games(
+    db: Session,
+    user_id: int,
+    game_ids: Iterable[int],
+    discount_code_id: Optional[int] = None, 
+):
     game_ids = [int(g) for g in game_ids if g is not None]
     if not game_ids:
         raise HTTPException(status_code=400, detail="ต้องระบุ game_ids อย่างน้อย 1 รายการ")
-    game_ids = sorted(set(game_ids))  # กันซ้ำ
+    game_ids = sorted(set(game_ids))
 
+    now_th = function.thai_date()
     try:
-        # ----- เริ่มทรานแซกชัน
-        # ล็อกแถวผู้ใช้ไว้เพื่อกัน race condition ตอนหักเงิน
+
         user = db.execute(
             text("SELECT id, wallet_balance FROM users WHERE id = :uid FOR UPDATE"),
             {"uid": user_id}
@@ -107,7 +140,6 @@ def purchase_games(db: Session, user_id: int, game_ids: Iterable[int]):
 
         wallet_balance = float(user["wallet_balance"] or 0)
 
-        # 1) เกมที่ขอซื้อมีจริงไหม
         games = db.execute(
             text(f"""
                 SELECT id, price, name
@@ -122,7 +154,6 @@ def purchase_games(db: Session, user_id: int, game_ids: Iterable[int]):
             missing = [gid for gid in game_ids if gid not in have_ids]
             raise HTTPException(status_code=404, detail=f"ไม่พบเกม: {missing}")
 
-        # 2) เช็กสิทธิ์เดิม กันซื้อซ้ำ
         owned = db.execute(
             text(f"""
                 SELECT game_id
@@ -132,76 +163,89 @@ def purchase_games(db: Session, user_id: int, game_ids: Iterable[int]):
             """),
             {"uid": user_id, **{("gg"+str(i)): gid for i, gid in enumerate(game_ids)}}
         ).scalars().all()
-
         if owned:
             raise HTTPException(status_code=400, detail=f"คุณมีเกมเหล่านี้อยู่แล้ว: {sorted(set(owned))}")
 
-        # 3) คำนวณยอดรวม (snapshot ราคา)
         subtotal = sum(float(g["price"]) for g in games)
-        discount = 0.0
-        total = subtotal - discount
 
+        discount = 0.0
+        discount_dc = None
+        if discount_code_id is not None:
+            discount_dc = _load_discount(db, discount_code_id)
+            discount = _calc_discount(subtotal, discount_dc)
+
+        total = max(0.0, round(subtotal - discount, 2))
         if wallet_balance < total:
             raise HTTPException(status_code=400, detail="ยอดเงินในวอลเล็ตไม่เพียงพอ")
 
-        # 4) สร้าง order (pending)
         order_id = db.execute(
             text("""
                 INSERT INTO orders
-                    (user_id, subtotal_amount, discount_amount, total_amount, status, created_at, updated_at)
+                    (user_id, subtotal_amount, discount_amount, total_amount, status, release_date)
                 VALUES
-                    (:uid, :subtotal, :discount, :total, 'pending', :now, :now)
+                    (:uid, :subtotal, :discount, :total, 'pending', :release_date)
             """),
-            {"uid": user_id, "subtotal": subtotal, "discount": discount, "total": total, "now": datetime.now()}
+            {"uid": user_id, "subtotal": subtotal, "discount": discount, "total": total, "release_date": now_th}
         ).lastrowid
 
-        # 5) ใส่ order_items (snapshot unit_price)
         db.execute(
             text("""
-                INSERT INTO order_items (order_id, game_id, unit_price, quantity, created_at)
-                VALUES (:oid, :gid, :price, 1, :now)
+                INSERT INTO order_items (order_id, game_id, unit_price, quantity)
+                VALUES (:oid, :gid, :price, 1)
             """),
             [
-                {"oid": order_id, "gid": int(g["id"]), "price": float(g["price"]), "now": datetime.now()}
+                {"oid": order_id, "gid": int(g["id"]), "price": float(g["price"])}
                 for g in games
             ]
         )
 
-        # 6) หักเงิน wallet
         new_balance = wallet_balance - total
         db.execute(
             text("UPDATE users SET wallet_balance = :bal WHERE id = :uid"),
             {"bal": new_balance, "uid": user_id}
         )
 
-        # 7) บันทึกธุรกรรม (transactions)
         db.execute(
             text("""
                 INSERT INTO transactions (user_id, order_id, type, amount, status, processed_at)
                 VALUES (:uid, :oid, 'purchase', :amt, 'SUCCESS', :processed_at)
             """),
-            {"uid": user_id, "oid": order_id, "amt": total, "processed_at": function.thai_date()}
+            {"uid": user_id, "oid": order_id, "amt": total, "processed_at": now_th}
         )
 
-        # 8) ออก license ให้ผู้ใช้
         db.execute(
             text("""
-                INSERT INTO user_game_licenses (user_id, game_id, order_id, acquired_at)
-                VALUES (:uid, :gid, :oid, :now)
-                ON DUPLICATE KEY UPDATE order_id = VALUES(order_id), acquired_at = VALUES(acquired_at)
+                INSERT INTO user_game_licenses (user_id, game_id, order_id)
+                VALUES (:uid, :gid, :oid)
             """),
-            [{"uid": user_id, "gid": int(g["id"]), "oid": order_id, "now": datetime.now()} for g in games]
+            [{"uid": user_id, "gid": int(g["id"]), "oid": order_id} for g in games]
         )
 
-        # 9) ปิดคำสั่งซื้อ
-        db.execute(text("UPDATE orders SET status='fulfilled', updated_at=:now WHERE id=:oid"),
-                   {"now": datetime.now(), "oid": order_id})
+        if discount_dc is not None and discount > 0:
+            db.execute(
+                text("""
+                    INSERT INTO discount_redemptions (code_id, user_id, order_id, discount_amount)
+                    VALUES (:cid, :uid, :oid, :disc)
+                """),
+                {"cid": int(discount_dc["id"]), "uid": user_id, "oid": order_id, "disc": discount}
+            )
+
+        db.execute(
+            text("UPDATE orders SET status='fulfilled', release_date=:now WHERE id=:oid"),
+            {"now": now_th, "oid": order_id}
+        )
 
         db.commit()
 
-        # 10) คืนข้อมูลคำสั่งซื้อ
-        order = [{"game_id": int(g["id"]), "name": g["name"]} for g in games]
-        return order
+        return {
+            "order_id": order_id,
+            "subtotal": subtotal,
+            "discount": discount,
+            "total": total,
+            "games": [{"game_id": int(g["id"]), "name": g["name"]} for g in games],
+            "used_code_id": int(discount_dc["id"]) if discount_dc else None,
+            "order_time": now_th,
+        }
 
     except HTTPException:
         db.rollback()
@@ -209,11 +253,15 @@ def purchase_games(db: Session, user_id: int, game_ids: Iterable[int]):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"เกิดข้อผิดพลาดระหว่างทำรายการ: {e}")
-    
 
-def purchase_one_game(db: Session, user_id: int, game_id: int) -> dict:
-    """ซื้อเกมเดี่ยว สะดวกๆ"""
-    return purchase_games(db, user_id, [game_id])
+
+def purchase_one_game(
+    db: Session,
+    user_id: int,
+    game_id: int,
+    discount_code_id: Optional[int] = None
+):
+    return purchase_games(db, user_id, [game_id], discount_code_id=discount_code_id)
 
 
 def get_user_transactions(db: Session, user_id: int):
@@ -305,7 +353,7 @@ def update_discount_code(
     max_discount: Optional[float] = None,
     usage_limit: Optional[int] = None,
     status: Optional[Literal["active", "inactive"]] = None,
-    new_code: Optional[str] = None,          # 👈 เพิ่มพารามิเตอร์นี้
+    new_code: Optional[str] = None,         
 ):
     cur = db.execute(
         text("""
@@ -314,10 +362,10 @@ def update_discount_code(
         """),
         {"id": code_id},
     ).mappings().first()
+    
     if not cur:
         raise HTTPException(status_code=404, detail="ไม่พบโค้ดส่วนลดนี้")
 
-    # --- เตรียมค่าใหม่ ---
     new_type = type_ if type_ is not None else cur["type"]
     new_value = float(value) if value is not None else float(cur["value"])
 
@@ -326,12 +374,11 @@ def update_discount_code(
             float(cur["max_discount"]) if cur["max_discount"] is not None else None
         )
     else:
-        new_max = None  # fixed
+        new_max = None
 
     new_limit  = int(usage_limit) if usage_limit is not None else cur["usage_limit"]
     new_status = status if status is not None else cur["status"]
 
-    # --- ตรวจสอบความถูกต้องเชิงธุรกิจ ---
     if new_type not in ("percent", "fixed"):
         raise HTTPException(status_code=400, detail="type ต้องเป็น 'percent' หรือ 'fixed'")
 
@@ -348,7 +395,6 @@ def update_discount_code(
     if new_limit is not None and int(new_limit) <= 0:
         raise HTTPException(status_code=400, detail="usage_limit ต้องมากกว่า 0")
 
-    # --- เตรียมอัปเดตฟิลด์ ---
     fields = {
         "type": new_type,
         "value": new_value,
@@ -357,10 +403,8 @@ def update_discount_code(
         "status": new_status,
     }
 
-    # ถ้ามีการส่ง new_code เข้ามา → ตรวจรูปแบบและเช็คซ้ำ
     if new_code is not None:
         normalized = new_code.strip().upper()
-        # ตรวจความยาว/รูปแบบ (อนุญาต A-Z และ 0-9 เท่านั้น)
         if not (1 <= len(normalized) <= 32) or not re.fullmatch(r"[A-Z0-9]+", normalized):
             raise HTTPException(status_code=400, detail="รูปแบบโค้ดไม่ถูกต้อง (ต้องเป็น A–Z/0–9 ยาว 1–32 ตัว)")
 

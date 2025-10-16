@@ -25,15 +25,65 @@ def add_balance(
     return result
 
 
+from fastapi import APIRouter, Depends, Form, Query
+from sqlalchemy.orm import Session
+from app.db.dependency import get_db
+from app.crud import wallet as crud_wallet
+from fastapi import HTTPException
+from sqlalchemy.sql import text
+
+router = APIRouter(prefix="/wallet", tags=["Users"])
+
+
 @router.post("/buy/{user_id}/{game_id}")
-def buy_one(user_id: int, game_id: int, db: Session = Depends(get_db)):
-    result = crud_wallet.purchase_one_game(db, user_id, game_id)
+def buy_one(
+    user_id: int,
+    game_id: int,
+    discount_code: str | None = Form(None), 
+    db: Session = Depends(get_db),
+):
+    discount_code_id = None
+    if discount_code:
+        code = crud_wallet.get_discount_code_by_codeva(db, discount_code)
+
+        if not code:
+            raise HTTPException(status_code=404, detail="ไม่พบโค้ดส่วนลดนี้หรือโค้ดไม่พร้อมใช้งาน")
+        
+        discount_code_id = code["id"]
+
+    result = crud_wallet.purchase_one_game(
+        db=db,
+        user_id=user_id,
+        game_id=game_id,
+        discount_code_id=discount_code_id
+    )
+
     return {"message": "คุณซื้อเกมสำเร็จ!"}
 
 
 @router.post("/buy/{user_id}")
-def buy_many(user_id: int, game_ids: list[int], db: Session = Depends(get_db)):
-    result = crud_wallet.purchase_games(db, user_id, game_ids)
+def buy_many(
+    user_id: int,
+    game_ids: list[int] = Form(...), 
+    discount_code: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    discount_code_id = None
+    if discount_code:
+        code = crud_wallet.get_discount_code_by_codeva(db, discount_code)
+
+        if not code:
+            raise HTTPException(status_code=404, detail="ไม่พบโค้ดส่วนลดนี้หรือโค้ดไม่พร้อมใช้งาน")
+        
+        discount_code_id = code["id"]
+
+    result = crud_wallet.purchase_games(
+        db=db,
+        user_id=user_id,
+        game_ids=game_ids,
+        discount_code_id=discount_code_id
+    )
+
     return {"message": "คุณซื้อเกมสำเร็จ!"}
 
 
