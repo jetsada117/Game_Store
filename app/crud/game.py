@@ -318,7 +318,6 @@ def get_purchased_games_by_user(db: Session, user_id: int):
         JOIN games g ON ugl.game_id = g.id
         LEFT JOIN game_category gc ON g.category_id = gc.id
         WHERE ugl.user_id = :uid
-        ORDER BY ugl.acquired_at ASC;
     """)
 
     result = db.execute(sql, {"uid": user_id}).mappings().all()
