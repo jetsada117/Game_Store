@@ -335,20 +335,21 @@ def get_daily_top_selling_games(
     sql = text(f"""
         WITH daily AS (
             SELECT
-                DATE(o.created_at)                           AS sale_date,
-                g.id                                         AS game_id,
-                g.name                                       AS game_name,
-                gc.name                                      AS category_name,
-                SUM(oi.quantity)                             AS total_units,
-                SUM(oi.quantity * oi.unit_price)             AS total_revenue
+                DATE(o.created_at)               AS sale_date,
+                g.id                             AS game_id,
+                g.name                           AS game_name,
+                gc.name                          AS category_name,
+                g.image_url                      AS image_url,   
+                SUM(oi.quantity)                 AS total_units,
+                SUM(oi.quantity * oi.unit_price) AS total_revenue
             FROM orders o
             JOIN order_items oi ON oi.order_id = o.id
             JOIN games g        ON g.id = oi.game_id
             LEFT JOIN game_category gc ON gc.id = g.category_id
             WHERE o.status = 'fulfilled'
               AND o.created_at >= DATE_SUB(CURDATE(), INTERVAL :days_minus_one DAY)
-              AND o.created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-            GROUP BY DATE(o.created_at), g.id, g.name, gc.name
+              AND o.created_at <  DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            GROUP BY DATE(o.created_at), g.id, g.name, gc.name, g.image_url 
         ),
         ranked AS (
             SELECT
@@ -364,6 +365,7 @@ def get_daily_top_selling_games(
             game_id,
             game_name,
             category_name,
+            image_url,      
             total_units,
             total_revenue,
             rnk
@@ -390,10 +392,10 @@ def get_daily_top_selling_games(
             "game_id": r["game_id"],
             "game_name": r["game_name"],
             "category_name": r["category_name"],
+            "image_url": r["image_url"],
             "total_units": int(r["total_units"] or 0),
             "total_revenue": float(r["total_revenue"] or 0.0),
         })
 
-    result = [{"date": d, "top": grouped[d]} for d in sorted(grouped.keys(), reverse=True)]
-    return result
+    return [{"date": d, "top": grouped[d]} for d in sorted(grouped.keys(), reverse=True)]
 
