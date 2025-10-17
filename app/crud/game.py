@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List, Literal
 from sqlalchemy import text
 from datetime import datetime
 from fastapi import HTTPException, UploadFile
@@ -322,3 +322,78 @@ def get_purchased_games_by_user(db: Session, user_id: int):
 
     result = db.execute(sql, {"uid": user_id}).mappings().all()
     return result
+
+
+def get_daily_top_selling_games(
+    db: Session,
+    days: int = 7,
+    top_n: int = 5,
+    order_by: Literal["units", "revenue"] = "units",
+):
+    order_col = "total_units" if order_by == "units" else "total_revenue"
+
+    sql = text(f"""
+        WITH daily AS (
+            SELECT
+                DATE(o.created_at)                           AS sale_date,
+                g.id                                         AS game_id,
+                g.name                                       AS game_name,
+                gc.name                                      AS category_name,
+                SUM(oi.quantity)                             AS total_units,
+                SUM(oi.quantity * oi.unit_price)             AS total_revenue
+            FROM orders o
+            JOIN order_items oi ON oi.order_id = o.id
+            JOIN games g        ON g.id = oi.game_id
+            LEFT JOIN game_category gc ON gc.id = g.category_id
+            WHERE o.status = 'fulfilled'
+              AND o.created_at >= DATE_SUB(CURDATE(), INTERVAL :days_minus_one DAY)
+              AND o.created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            GROUP BY DATE(o.created_at), g.id, g.name, gc.name
+        ),
+        ranked AS (
+            SELECT
+                d.*,
+                ROW_NUMBER() OVER (
+                    PARTITION BY d.sale_date
+                    ORDER BY d.{order_col} DESC, d.total_revenue DESC, d.game_name ASC
+                ) AS rnk
+            FROM daily d
+        )
+        SELECT
+            sale_date,
+            game_id,
+            game_name,
+            category_name,
+            total_units,
+            total_revenue,
+            rnk
+        FROM ranked
+        WHERE rnk <= :top_n
+        ORDER BY sale_date DESC, rnk ASC;
+    """)
+
+    rows = db.execute(sql, {
+        "days_minus_one": max(0, days - 1),
+        "top_n": top_n
+    }).mappings().all()
+
+    def format_thai_date(dt: datetime.date) -> str:
+        if not dt:
+            return "-"
+        return f"{dt.day:02d}/{dt.month:02d}/{dt.year + 543}"
+
+    grouped: Dict[str, List[Dict]] = {}
+    for r in rows:
+        sale_date_th = format_thai_date(r["sale_date"])
+        grouped.setdefault(sale_date_th, []).append({
+            "rank": r["rnk"],
+            "game_id": r["game_id"],
+            "game_name": r["game_name"],
+            "category_name": r["category_name"],
+            "total_units": int(r["total_units"] or 0),
+            "total_revenue": float(r["total_revenue"] or 0.0),
+        })
+
+    result = [{"date": d, "top": grouped[d]} for d in sorted(grouped.keys(), reverse=True)]
+    return result
+

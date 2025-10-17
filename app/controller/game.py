@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Literal
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -119,3 +119,13 @@ def delete_game(game_id: int, db: Session = Depends(get_db)):
 @router.get("/user/{user_id}/purchased-games", response_model=List[GameResponse])
 def get_purchased_games(user_id: int, db: Session = Depends(get_db)):
     return crud_game.get_purchased_games_by_user(db, user_id)
+
+@router.get("/stats/top-selling")
+def top_selling_games_daily(
+    days: int = Query(7, ge=1, le=90, description="จำนวนวันย้อนหลัง (รวมวันนี้)"),
+    top: int = Query(5, ge=1, le=20, description="จำนวนอันดับต่อวัน"),
+    order_by: Literal["units", "revenue"] = Query("units", description="จัดอันดับภายในวัน: units หรือ revenue"),
+    db: Session = Depends(get_db),
+):
+    return crud_game.get_daily_top_selling_games(db, days=days, top_n=top, order_by=order_by)
+
